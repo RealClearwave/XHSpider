@@ -2,10 +2,16 @@ import subprocess
 import time
 import re
 import os
-import sqlite3
+import requests
 import json
 from selenium import webdriver
 from selenium.webdriver.edge.options import Options
+import pandas as pd
+
+#多模态计数
+item_idx_cnt = 1
+#输出目录
+output_dir = './output/multimodal'
 
 def kill_all_edge():
     """强制结束所有正在运行的 Edge 进程（Windows 平台）。"""
@@ -70,6 +76,7 @@ def fetch_page_message(url, debug_address="127.0.0.1:9222", wait=5, refresh=Fals
         raise Exception("No message found in the page.")
 
 def fetch_xhs_items(url_list):
+    global item_idx_cnt, output_dir
     """
     附着到刚启动的 Edge，打开每个 URL，读取 console.info，
     提取第一个以小红书 item 前缀开头的链接。
@@ -78,6 +85,7 @@ def fetch_xhs_items(url_list):
     results = []
 
     for url in url_list:
+        print(f"正在处理 URL: {url}")
         msg_list = fetch_page_message(url, wait=2)
         for i in msg_list:
             if "https://www.xiaohongshu.com/discovery/item/" in i:
@@ -90,7 +98,9 @@ def fetch_xhs_items(url_list):
         if m:
             '''
             blogger_url,评论用户主页,评论用户个性化笔记链接,评论用户个人简介,评论内容,
+            blogger_url,comment_user_homepage,commenter_explore_url,commenter_personal_intro,comment_content
             评论多模态标签,回复内容,回复多模态标签,发帖博主选取笔记链接
+            (is_reply_multimodal,reply_multimodal_url),reply_content,(is_reply_multimodal,reply_multimodal_url),blogger_explore_url
             '''
             r_item = {}
             r_item["blogger_url"] = url
@@ -106,7 +116,7 @@ def fetch_xhs_items(url_list):
             m = re.search(r'({.*?})', m)
             # 提取 JSON 字符串
             m = m.group(1) if m else None
-            print(f'Message: {m}')
+            print(f'抓取到的Message: {m}')
 
             if m:
                 # 提取 JSON 字符串
@@ -116,7 +126,7 @@ def fetch_xhs_items(url_list):
                     my_json = json.loads(json_str)
                     for key, value in my_json.items():
                         # 这里可以根据需要处理 JSON 数据
-                        print(f"{key}: {value}")
+                        #print(f"{key}: {value}")
                         r_item[key] = value
                 except json.JSONDecodeError as e:
                     print(f"JSON 解析错误: {e}")
@@ -130,10 +140,94 @@ def fetch_xhs_items(url_list):
                     r_item["commenter_explore_url"] = (re.search(r'(https://www\.xiaohongshu\.com/discovery/item/[^\s"\'<>]+)', i)).group(1)
                     break
             
+            if r_item["is_comment_multimodal"] == True:
+                comment_multimodal_url = r_item["comment_multimodal_url"]
+                print(f"评论多模态链接：{comment_multimodal_url}")
+                mmd_blob = requests.get(comment_multimodal_url)
+                mmd_extension = '.' + comment_multimodal_url.split('.')[-1]
+                
+                
+                if not os.path.exists(output_dir):
+                    os.makedirs(output_dir)
+
+                output_path = os.path.join(output_dir, f"{item_idx_cnt}{mmd_extension}")
+                item_idx_cnt += 1
+
+                with open(output_path, 'wb') as f:
+                    f.write(mmd_blob.content)
+                
+                r_item["comment_multimodal_tag"] = item_idx_cnt
+                print(f"保存多模态文件到：{output_path}")
+            else:
+                r_item["comment_multimodal_tag"] = 0
+
+            del r_item["comment_multimodal_url"]
+            del r_item["is_comment_multimodal"]
+
+            if r_item["is_reply_multimodal"] == True:
+                reply_multimodal_url = r_item["reply_multimodal_url"]
+                print(f"回复多模态链接：{reply_multimodal_url}")
+                mmd_blob = requests.get(reply_multimodal_url)
+                mmd_extension = '.' + reply_multimodal_url.split('.')[-1]
+                
+                if not os.path.exists(output_dir):
+                    os.makedirs(output_dir)
+
+                output_path = os.path.join(output_dir, f"{item_idx_cnt}{mmd_extension}")
+                item_idx_cnt += 1
+
+                with open(output_path, 'wb') as f:
+                    f.write(mmd_blob.content)
+                
+                r_item["reply_multimodal_tag"] = item_idx_cnt
+                print(f"保存多模态文件到：{output_path}")
+            else:
+                r_item["reply_multimodal_tag"] = 0
+
+            del r_item["reply_multimodal_url"]
+            del r_item["is_reply_multimodal"]
+
             print(f"Result: {r_item}")
 
+            print("正在保存数据到Excel文件中……")
+
+            # 定义列名映射
+            column_headers = {
+                'blogger_url': '博主链接',
+                'comment_user_homepage': '评论用户主页',
+                'commenter_explore_url': '评论用户个性化笔记链接',
+                'commenter_personal_intro': '评论用户个人简介',
+                'comment_content': '评论内容',
+                'comment_multimodal_tag': '评论多模态标签',
+                'reply_content': '回复内容',
+                'reply_multimodal_tag': '回复多模态标签',
+                'blogger_explore_url': '发帖博主选取笔记链接'
+            }
+            #以blogger_url为索引在'./output/blogger_info_base.xlsx'中查找相应行，并依据column_headers修改相应行的数据
+            # Load the existing Excel file
+            try:
+                blogger_df = pd.read_excel('./output/blogger_info_base.xlsx')
+                
+                # Find the index of the row with matching blogger_url
+                match_idx = blogger_df.index[blogger_df['blogger_url'] == r_item['blogger_url']].tolist()
+                
+                if match_idx:
+                    # Update the existing row with values from r_item
+                    for key, column_name in column_headers.items():
+                        if key in r_item and column_name in blogger_df.columns:
+                            blogger_df.loc[match_idx[0], column_name] = r_item[key]
+                            print(f"更新列 {column_name} 的值为 {r_item[key]}")
+                    print(f"已更新博主 URL {r_item['blogger_url']} 的数据")
+                else:
+                    # Add a new row with the data from r_item
+                    blogger_df = pd.concat([blogger_df, pd.DataFrame([r_item])], ignore_index=True)
+                    print(f"为博主 URL {r_item['blogger_url']} 添加了新行")
+                
+                # Save the updated dataframe back to Excel
+                blogger_df.to_excel('./output/blogger_info_base.xlsx', index=False)
+            except Exception as e:
+                print(f"更新 Excel 文件时出错: {e}")
             results.append(r_item)
-            break
 
     return results
 
@@ -145,34 +239,26 @@ if __name__ == "__main__":
 
 
     # —— 2. 抓取小红书 item 链接 ——
-    urls = [
-        "https://www.xiaohongshu.com/user/profile/58aab81d50c4b4739d772409?xsec_token=ABa-S2H2tt5ejP6jAkFjYNkpLCDTpfbkqWGqIvafPUEm4=&xsec_source=pc_feed",
-        # …更多 URL
-    ]
+    # 读取Excel文件中的博主URL列表
+    try:
+        df = pd.read_excel('./output/blogger_info_base.xlsx')
+        if 'blogger_url' in df.columns:
+            # Filter out rows where "评论内容" is not empty
+            filtered_df = df[df['评论内容'].isna() | (df['评论内容'] == '')]
+            urls = filtered_df['blogger_url'].tolist()
+            print(f"从Excel文件中读取了 {len(urls)} 个博主URL（已过滤掉评论内容不为空的行）")
+        else:
+            print("Excel文件中没有找到'blogger_url'列，使用默认URL")
+            urls = [
+                "https://www.xiaohongshu.com/user/profile/58aab81d50c4b4739d772409?xsec_token=ABa-S2H2tt5ejP6jAkFjYNkpLCDTpfbkqWGqIvafPUEm4=&xsec_source=pc_feed",
+            ]
+    except Exception as e:
+        print(f"读取Excel文件出错: {e}，使用默认URL")
+        urls = [
+            "https://www.xiaohongshu.com/user/profile/58aab81d50c4b4739d772409?xsec_token=ABa-S2H2tt5ejP6jAkFjYNkpLCDTpfbkqWGqIvafPUEm4=&xsec_source=pc_feed",
+        ]
+
     print("开始抓取 console.info 中的小红书 item 链接…")
     items = fetch_xhs_items(urls)
-    print("抓到的小红书 item 链接：")
-    for link in items:
-        print(link)
-
-    print("正在下载小红书作品文件（可能需要较长时间）……")
-    for item in items:
-        # 这里可以调用下载函数
-        # download_xhs_item(link)
-        link = item["blogger_explore_url"]
-        print(f"下载 {link} 的作品文件")
-        os.system(f"main.exe -bc 7 -u \"{link}\"")
-        print("下载完成！")
-
-    download_path = "./_internal/Download/"
-    for item in items:
-        # 利用正则表达式提取作品ID('https://www.xiaohongshu.com/discovery/item/'之后，?source=前的部分)
-        item_id = re.search(r'item/([^?]+)', item).group(1)
-        # 找到download_path下以item_id开头的文件夹
-        
-
-    
-    while(True):
-        pass
     # —— 3. 清理 ——  
     #proc.terminate()
