@@ -1565,6 +1565,7 @@ XHS-Downloader 用户脚本 详细说明：
         if (window.location.href.includes("https://www.xiaohongshu.com/user/profile/")){
             extractAllLinks(urlsString => {
                 if (urlsString) {
+                    console.warn("GerenJianjie" + document.getElementsByClassName('user-desc')[0].innerText)
                     console.warn(urlsString)
                 } else {
                     console.warn("{}")
@@ -1600,7 +1601,7 @@ XHS-Downloader 用户脚本 详细说明：
                 w_msg.have_repl = false
                 w_msg.reply_content = null
             }
-            console.warn(w_msg)
+            console.warn(JSON.stringify(w_msg))
         }
     }, false);
 
