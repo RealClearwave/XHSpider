@@ -10,8 +10,16 @@ import pandas as pd
 
 #多模态计数
 item_idx_cnt = 0
+for i in os.listdir('./output/multimodal'):
+    t = i.split('.')[0]
+    if (int(t) > item_idx_cnt):
+        item_idx_cnt = int(t)
+
 #输出目录
 output_dir = './output/multimodal'
+
+#防止验证码
+total_read_cnt = 1
 
 def kill_all_edge():
     """强制结束所有正在运行的 Edge 进程（Windows 平台）。"""
@@ -41,7 +49,7 @@ def launch_edge(debug_port=9222, user_data_dir=None, msedge_path=None):
     return subprocess.Popen(cmd, shell=False)
 
 
-def fetch_page_message(url, debug_address="127.0.0.1:9222", wait=5, refresh=False):
+def fetch_page_message(url, debug_address="127.0.0.1:9222", wait=8, refresh=False):
     """
     打开指定 URL，等待页面加载完成，检查是否有警告信息。
     """
@@ -73,10 +81,10 @@ def fetch_page_message(url, debug_address="127.0.0.1:9222", wait=5, refresh=Fals
         #print(f"抓取到Message: {msg}")
         return msg
     else:
-        raise Exception("No message found in the page.")
+        pass
 
 def fetch_xhs_items(url_list):
-    global item_idx_cnt, output_dir
+    global item_idx_cnt, output_dir, total_read_cnt
     """
     附着到刚启动的 Edge，打开每个 URL，读取 console.info，
     提取第一个以小红书 item 前缀开头的链接。
@@ -85,8 +93,14 @@ def fetch_xhs_items(url_list):
     results = []
 
     for url in url_list:
-        print(f"正在处理 URL: {url}")
-        msg_list = fetch_page_message(url, wait=2)
+        if total_read_cnt % 10 == 0:
+            print("每10个链接暂停30秒")
+            time.sleep(30)
+        else:
+            total_read_cnt += 1
+        
+        print(f"正在处理 {total_read_cnt}th URL: {url}")
+        msg_list = fetch_page_message(url)
         for i in msg_list:
             if "https://www.xiaohongshu.com/discovery/item/" in i:
                 msg = i
@@ -231,6 +245,8 @@ def fetch_xhs_items(url_list):
                 results.append(r_item)
             except Exception as e:
                 print(f"处理 URL {url} 时出错: {e}")
+                print(f"暂停30s后继续")
+                time.sleep(30)
                 continue
 
     return results
