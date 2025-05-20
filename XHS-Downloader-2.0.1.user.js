@@ -1571,6 +1571,37 @@ XHS-Downloader 用户脚本 详细说明：
                 }
             }, 0);
         }
+        if (window.location.href.includes("https://www.xiaohongshu.com/explore/")){
+            //获取评论内容
+            let w_msg = {"comment_content": document.getElementsByClassName("comment-inner-container")[0].children[1].children[1].innerText}
+            //评论用户主页
+            w_msg.comment_user_homepage = document.getElementsByClassName("comment-inner-container")[0].children[1].getElementsByClassName("author")[0].getElementsByClassName("name")[0].href;
+
+            //判断评论是否多模态
+            if (document.getElementsByClassName("comment-inner-container")[0].children[1].getElementsByClassName('note-text')[0].getElementsByClassName('note-content-emoji').length != 0){
+                w_msg.is_comment_multimodal = true
+                w_msg.comment_multimodal_url = document.getElementsByClassName("comment-inner-container")[0].children[1].getElementsByClassName('note-text')[0].getElementsByClassName('note-content-emoji')[0].src;
+            }else{
+                w_msg.is_comment_multimodal = false
+                w_msg.comment_multimodal_url = null
+            }
+            //获取回复内容
+            if (document.getElementsByClassName("comment-inner-container")[1] != undefined){
+                w_msg.have_reply = true
+                w_msg.reply_content = document.getElementsByClassName("comment-inner-container")[1].children[1].children[1].innerText
+                if (document.getElementsByClassName("comment-inner-container")[1].children[1].getElementsByClassName('note-text')[0].getElementsByClassName('note-content-emoji').length != 0){
+                    w_msg.is_reply_multimodal = true
+                    w_msg.reply_multimodal_url = document.getElementsByClassName("comment-inner-container")[0].children[1].getElementsByClassName('note-text')[0].getElementsByClassName('note-content-emoji')[0].src;
+                }else{
+                    w_msg.is_reply_multimodal = false
+                    w_msg.reply_multimodal_url = null
+                }
+            }else{
+                w_msg.have_repl = false
+                w_msg.reply_content = null
+            }
+            console.warn(w_msg)
+        }
     }, false);
 
     // 添加到页面
