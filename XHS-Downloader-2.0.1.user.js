@@ -1573,33 +1573,50 @@ XHS-Downloader 用户脚本 详细说明：
             }, 0);
         }
         if (window.location.href.includes("https://www.xiaohongshu.com/explore/")){
+            //尝试找出有多模态的评论
+            let com_blk_cnt = document.getElementsByClassName("parent-comment").length;
+            let parent_id = 0,max_cnt = 0, cur_cnt;
+            for (var i=0;i<com_blk_cnt;i++){
+                let itxt = document.getElementsByClassName("parent-comment")[i].getElementsByClassName("note-text")[0].innerText
+                if (itxt == undefined || itxt == '') continue
+                cur_cnt = document.getElementsByClassName("parent-comment")[i].getElementsByClassName("comment-picture").length
+                if (cur_cnt > max_cnt){
+                    max_cnt = cur_cnt
+                    parent_id = i
+                }
+            }
             //获取评论内容
-            let w_msg = {"comment_content": document.getElementsByClassName("comment-inner-container")[0].children[1].children[1].innerText}
+            let w_msg = {"comment_content": document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("note-text")[0].innerText}
             //评论用户主页
-            w_msg.comment_user_homepage = document.getElementsByClassName("comment-inner-container")[0].children[1].getElementsByClassName("author")[0].getElementsByClassName("name")[0].href;
+            w_msg.comment_user_homepage = document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("avatar")[0].children[0].href;
 
+            //判断是否含有回复
+            let have_reply = (document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("reply-container").length>0?true:false)
             //判断评论是否多模态
-            if (document.getElementsByClassName("comment-inner-container")[0].children[1].getElementsByClassName('note-text')[0].getElementsByClassName('note-content-emoji').length != 0){
+            if (document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("comment-picture").length -
+                (have_reply?document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("reply-container")[0].getElementsByClassName("comment-picture").length:0) > 0){
                 w_msg.is_comment_multimodal = true
-                w_msg.comment_multimodal_url = document.getElementsByClassName("comment-inner-container")[0].children[1].getElementsByClassName('note-text')[0].getElementsByClassName('note-content-emoji')[0].src;
+                w_msg.comment_multimodal_url = document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("comment-picture")[0].getElementsByClassName("inner")[0].src;
             }else{
                 w_msg.is_comment_multimodal = false
-                w_msg.comment_multimodal_url = null
+                w_msg.comment_multimodal_url = "无"
             }
             //获取回复内容
-            if (document.getElementsByClassName("comment-inner-container")[1] != undefined){
+            if (have_reply){
                 w_msg.have_reply = true
-                w_msg.reply_content = document.getElementsByClassName("comment-inner-container")[1].children[1].children[1].innerText
-                if (document.getElementsByClassName("comment-inner-container")[1].children[1].getElementsByClassName('note-text')[0].getElementsByClassName('note-content-emoji').length != 0){
+                w_msg.reply_content = document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("reply-container")[0].getElementsByClassName("note-text")[0].innerText
+                if (document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("reply-container")[0].getElementsByClassName("comment-picture").length > 0){
                     w_msg.is_reply_multimodal = true
-                    w_msg.reply_multimodal_url = document.getElementsByClassName("comment-inner-container")[0].children[1].getElementsByClassName('note-text')[0].getElementsByClassName('note-content-emoji')[0].src;
+                    w_msg.reply_multimodal_url = document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("reply-container")[0].getElementsByClassName("comment-picture")[0].getElementsByClassName("inner")[0].src;
                 }else{
                     w_msg.is_reply_multimodal = false
-                    w_msg.reply_multimodal_url = null
+                    w_msg.reply_multimodal_url = "无"
                 }
             }else{
                 w_msg.have_repl = false
-                w_msg.reply_content = null
+                w_msg.reply_content = "无"
+                w_msg.is_reply_multimodal = false
+                w_msg.reply_multimodal_url = "无"
             }
             console.warn(JSON.stringify(w_msg))
         }
