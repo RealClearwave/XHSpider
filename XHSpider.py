@@ -162,63 +162,61 @@ def fetch_xhs_items(url_list):
                     if (r_item["comment_user_homepage"] == "无"):
                         r_item["commenter_personal_intro"] = "无"
                         r_item["commenter_explore_url"] = "无"
-                        continue
-
-                    msg = fetch_page_message(r_item["comment_user_homepage"],wait=2)
-                    for i in msg:
-                        if "GerenJianjie" in i:
-                            r_item["commenter_personal_intro"] = i.split("GerenJianjie")[1].replace('\"','')
-                        
-                        if "https://www.xiaohongshu.com/discovery/item/" in i:
-                            r_item["commenter_explore_url"] = (re.search(r'(https://www\.xiaohongshu\.com/discovery/item/[^\s"\'<>]+)', i)).group(1)
-                            break
-                    
-                    if r_item["is_comment_multimodal"] == True:
-                        comment_multimodal_url = r_item["comment_multimodal_url"]
-                        print(f"评论多模态链接：{comment_multimodal_url}")
-                        mmd_blob = requests.get(comment_multimodal_url)
-                        mmd_extension = '.webp' #to be modified
-                        
-                        if not os.path.exists(output_dir):
-                            os.makedirs(output_dir)
-
-                        item_idx_cnt += 1
-                        output_path = os.path.join(output_dir, f"{item_idx_cnt}{mmd_extension}")
-                        
-
-                        with open(output_path, 'wb') as f:
-                            f.write(mmd_blob.content)
-                        
-                        r_item["comment_multimodal_tag"] = item_idx_cnt
-                        print(f"保存多模态文件到：{output_path}")
                     else:
-                        r_item["comment_multimodal_tag"] = 0
 
-                    del r_item["comment_multimodal_url"]
-                    del r_item["is_comment_multimodal"]
-
-                    if r_item["is_reply_multimodal"] == True:
-                        reply_multimodal_url = r_item["reply_multimodal_url"]
-                        print(f"回复多模态链接：{reply_multimodal_url}")
-                        mmd_blob = requests.get(reply_multimodal_url)
-                        mmd_extension = '.webp' #to be modified
+                        msg = fetch_page_message(r_item["comment_user_homepage"],wait=2)
+                        for i in msg:
+                            if "GerenJianjie" in i:
+                                r_item["commenter_personal_intro"] = i.split("GerenJianjie")[1].replace('\"','')
+                            
+                            if "https://www.xiaohongshu.com/discovery/item/" in i:
+                                r_item["commenter_explore_url"] = (re.search(r'(https://www\.xiaohongshu\.com/discovery/item/[^\s"\'<>]+)', i)).group(1)
+                                break
                         
-                        if not os.path.exists(output_dir):
-                            os.makedirs(output_dir)
+                        if r_item["is_comment_multimodal"] == True:
+                            comment_multimodal_url = r_item["comment_multimodal_url"]
+                            print(f"评论多模态链接：{comment_multimodal_url}")
+                            mmd_blob = requests.get(comment_multimodal_url)
+                            mmd_extension = '.webp' #to be modified
+                            
+                            if not os.path.exists(output_dir):
+                                os.makedirs(output_dir)
 
-                        output_path = os.path.join(output_dir, f"{item_idx_cnt}{mmd_extension}")
-                        item_idx_cnt += 1
+                            item_idx_cnt += 1
+                            output_path = os.path.join(output_dir, f"{item_idx_cnt}{mmd_extension}")
+                            r_item["comment_multimodal_tag"] = item_idx_cnt
+                            print(f"保存多模态文件到：{output_path}")
 
-                        with open(output_path, 'wb') as f:
-                            f.write(mmd_blob.content)
-                        
-                        r_item["reply_multimodal_tag"] = item_idx_cnt
-                        print(f"保存多模态文件到：{output_path}")
-                    else:
-                        r_item["reply_multimodal_tag"] = 0
+                            with open(output_path, 'wb') as f:
+                                f.write(mmd_blob.content)
+                        else:
+                            r_item["comment_multimodal_tag"] = 0
 
-                    del r_item["reply_multimodal_url"]
-                    del r_item["is_reply_multimodal"]
+                        del r_item["comment_multimodal_url"]
+                        del r_item["is_comment_multimodal"]
+
+                        if r_item["is_reply_multimodal"] == True:
+                            reply_multimodal_url = r_item["reply_multimodal_url"]
+                            print(f"回复多模态链接：{reply_multimodal_url}")
+                            mmd_blob = requests.get(reply_multimodal_url)
+                            mmd_extension = '.webp' #to be modified
+                            
+                            if not os.path.exists(output_dir):
+                                os.makedirs(output_dir)
+                            
+                            item_idx_cnt += 1
+                            output_path = os.path.join(output_dir, f"{item_idx_cnt}{mmd_extension}")
+                            r_item["reply_multimodal_tag"] = item_idx_cnt
+                            print(f"保存多模态文件到：{output_path}")
+
+                            with open(output_path, 'wb') as f:
+                                f.write(mmd_blob.content)
+                            
+                        else:
+                            r_item["reply_multimodal_tag"] = 0
+
+                        del r_item["reply_multimodal_url"]
+                        del r_item["is_reply_multimodal"]
 
             print(f"Result: {r_item}")
 
