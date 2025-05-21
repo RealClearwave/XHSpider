@@ -49,12 +49,8 @@ def launch_edge(debug_port=9222, user_data_dir=None, msedge_path=None):
     ]
     return subprocess.Popen(cmd, shell=False)
 
-
-def fetch_page_message(url, debug_address="127.0.0.1:9222", wait=8, refresh=False):
-    """
-    打开指定 URL，等待页面加载完成，检查是否有警告信息。
-    """
-    proc = launch_edge()
+def init_edge_driver(debug_address="127.0.0.1:9222"):
+    launch_edge()
     options = Options()
     options.use_chromium = True
     options.add_experimental_option("debuggerAddress", debug_address)
@@ -62,6 +58,16 @@ def fetch_page_message(url, debug_address="127.0.0.1:9222", wait=8, refresh=Fals
     options.set_capability('goog:loggingPrefs', {'browser': 'ALL'})
 
     driver = webdriver.Edge(options=options)
+    return driver
+
+driver = init_edge_driver()
+
+def fetch_page_message(url, wait=8, refresh=False):
+    global driver
+    """
+    打开指定 URL，等待页面加载完成，检查是否有警告信息。
+    """
+    
 
     driver.get(url)
     time.sleep(wait)  # 等待页面加载
@@ -74,9 +80,6 @@ def fetch_page_message(url, debug_address="127.0.0.1:9222", wait=8, refresh=Fals
     msg = []
     for entry in driver.get_log('browser'):
         msg.append(entry.get('message', ''))
-    
-    driver.quit()
-    proc.terminate()
 
     if len(msg) > 0:
         #print(f"抓取到Message: {msg}")
@@ -136,6 +139,7 @@ def fetch_xhs_items(url_list):
                     r_item["blogger_url"] = url
                     r_item["blogger_explore_url"] = m.group(1)
 
+                    print(f"抓取到的博主选取笔记链接: {r_item['blogger_explore_url']}")
                     msg = fetch_page_message(r_item["blogger_explore_url"], refresh=True)
                     for i in msg:
                         if "comment_content" in i:
