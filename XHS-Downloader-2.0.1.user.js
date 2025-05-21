@@ -1565,7 +1565,11 @@ XHS-Downloader 用户脚本 详细说明：
         var i;
         if (window.location.href.includes("https://www.xiaohongshu.com/user/profile/")){
             //输出用户简介
-            console.warn("GerenJianjie" + document.getElementsByClassName('user-desc')[0].innerText)
+            if(document.getElementsByClassName('user-desc').length > 0){
+                console.warn("GerenJianjie" + document.getElementsByClassName('user-desc')[0].innerText)
+            }else{
+                console.warn("GerenJianjie无")
+            }
             //获取点赞数最高的笔记
             let note_blk_cnt = document.getElementsByClassName("note-item").length;
             if (note_blk_cnt == 0){
