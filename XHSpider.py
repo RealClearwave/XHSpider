@@ -85,6 +85,8 @@ def fetch_page_message(url, debug_address="127.0.0.1:9222", wait=8, refresh=Fals
         pass
 
 def fetch_xhs_items(url_list):
+    explore_regex = r'(https://www\.xiaohongshu\.com/explore/[^\s"\'<>]+)'
+
     global item_idx_cnt, output_dir, total_read_cnt
     """
     附着到刚启动的 Edge，打开每个 URL，读取 console.info，
@@ -120,7 +122,7 @@ def fetch_xhs_items(url_list):
                 r_item["blogger_explore_url"] = "无"
                 m = None
             else:
-                m = re.search(r'(https://www\.xiaohongshu\.com/explore/[^\s"\'<>]+)', msg)
+                m = re.search(explore_regex, msg)
 
             
             if m:
@@ -144,11 +146,14 @@ def fetch_xhs_items(url_list):
                     m = re.search(r'({.*?})', m)
                     # 提取 JSON 字符串
                     m = m.group(1) if m else None
+                    m = m.replace('\\"', '"')
+                    m = m.replace('\\\\', '\\')
+
                     print(f'抓取到的Message: {m}')
 
                     if m:
                         # 提取 JSON 字符串
-                        json_str = m.replace("\\", "")
+                        json_str = m
                         # 解析 JSON 字符串
                         try:
                             my_json = json.loads(json_str)
@@ -157,20 +162,23 @@ def fetch_xhs_items(url_list):
                                 #print(f"{key}: {value}")
                                 r_item[key] = value
                         except json.JSONDecodeError as e:
-                            print(f"JSON 解析错误: {e}")
+                            print(f"profile：JSON 解析错误: {e}")
                     
                     if (r_item["comment_user_homepage"] == "无"):
                         r_item["commenter_personal_intro"] = "无"
                         r_item["commenter_explore_url"] = "无"
                     else:
-
+                        print(f"正在读取评论用户数据: {r_item['comment_user_homepage']}")
                         msg = fetch_page_message(r_item["comment_user_homepage"],wait=2)
                         for i in msg:
+                            #print(f"抓取到Message: {i}")
                             if "GerenJianjie" in i:
+                                print(f"抓取到commenter_personal_intro: {i}")
                                 r_item["commenter_personal_intro"] = i.split("GerenJianjie")[1].replace('\"','')
                             
-                            if "https://www.xiaohongshu.com/discovery/item/" in i:
-                                r_item["commenter_explore_url"] = (re.search(r'(https://www\.xiaohongshu\.com/discovery/item/[^\s"\'<>]+)', i)).group(1)
+                            if "https://www.xiaohongshu.com/explore/" in i:
+                                print(f"抓取到commenter_explore_url: {i}")
+                                r_item["commenter_explore_url"] = (re.search(explore_regex, i)).group(1)
                                 break
                         
                         if r_item["is_comment_multimodal"] == True:
