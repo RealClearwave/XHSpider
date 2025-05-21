@@ -1594,6 +1594,8 @@ XHS-Downloader 用户脚本 详细说明：
             for (i=0;i<com_blk_cnt;i++){
                 let itxt = document.getElementsByClassName("parent-comment")[i].getElementsByClassName("note-text")[0].innerText
                 if (itxt == undefined || itxt == '') continue
+                let irprl = (document.getElementsByClassName("parent-comment")[i].getElementsByClassName("reply-container").length>0?true:false)
+                if (!irprl) continue
                 cur_cnt = document.getElementsByClassName("parent-comment")[i].getElementsByClassName("comment-picture").length
                 if (cur_cnt > max_cnt){
                     max_cnt = cur_cnt
