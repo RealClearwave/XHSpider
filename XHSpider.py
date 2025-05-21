@@ -290,7 +290,7 @@ if __name__ == "__main__":
         df = pd.read_excel('./output/blogger_info_base.xlsx')
         if 'blogger_url' in df.columns:
             # Filter out rows where "评论内容" is not empty
-            filtered_df = df[df['发帖博主选取笔记链接'].isna() | (df['发帖博主选取笔记链接'] == '')]
+            filtered_df = df[df['回复多模态标签'].isna() | (df['回复多模态标签'] == '')]
             urls = filtered_df['blogger_url'].tolist()
             print(f"从Excel文件中读取了 {len(urls)} 个博主URL（已过滤掉发帖博主选取笔记链接不为空的行）")
         else:
