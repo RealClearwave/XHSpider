@@ -1562,21 +1562,36 @@ XHS-Downloader 用户脚本 详细说明：
 
     window.addEventListener('load', function() {
         // 加载完成后执行的代码
+        var i;
         if (window.location.href.includes("https://www.xiaohongshu.com/user/profile/")){
-            extractAllLinks(urlsString => {
-                if (urlsString) {
-                    console.warn("GerenJianjie" + document.getElementsByClassName('user-desc')[0].innerText)
-                    console.warn(urlsString)
-                } else {
-                    console.warn("{}")
+            //获取点赞数最高的笔记
+            let note_blk_cnt = document.getElementsByClassName("note-item").length;
+            if (note_blk_cnt == 0){
+                console.warn("无有效链接")
+                return
+            }
+            let parent_id = 0,max_cnt = -1;
+            for (i = 0;i<note_blk_cnt;i++){
+                let cur_cnt = document.getElementsByClassName("note-item")[i].getElementsByClassName("count")[0].innerText;
+                if (cur_cnt.endsWith("万")){
+                    cur_cnt = cur_cnt.replaceAll("万","")*10000
+                }else{
+                    cur_cnt = cur_cnt * 1
                 }
-            }, 0);
+                if (cur_cnt > max_cnt){
+                    max_cnt = cur_cnt
+                    parent_id = i
+                }
+            }
+
+            let note_link = "https://www.xiaohongshu.com/explore/" + document.getElementsByClassName("note-item")[parent_id].getElementsByClassName("cover mask ld")[0].href.split("/")[6];
+            console.warn(note_link)
         }
         if (window.location.href.includes("https://www.xiaohongshu.com/explore/")){
             //尝试找出有多模态的评论
             let com_blk_cnt = document.getElementsByClassName("parent-comment").length;
             let parent_id = 0,max_cnt = 0, cur_cnt;
-            for (var i=0;i<com_blk_cnt;i++){
+            for (i=0;i<com_blk_cnt;i++){
                 let itxt = document.getElementsByClassName("parent-comment")[i].getElementsByClassName("note-text")[0].innerText
                 if (itxt == undefined || itxt == '') continue
                 cur_cnt = document.getElementsByClassName("parent-comment")[i].getElementsByClassName("comment-picture").length
@@ -1585,8 +1600,22 @@ XHS-Downloader 用户脚本 详细说明：
                     parent_id = i
                 }
             }
+            let w_msg = {}
             //获取评论内容
-            let w_msg = {"comment_content": document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("note-text")[0].innerText}
+            if (document.getElementsByClassName("parent-comment").length > 0){
+                w_msg.comment_content = document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("note-text")[0].innerText;
+            }else{
+                w_msg.comment_content = "无"
+                w_msg.comment_user_homepage = "无"
+                w_msg.is_comment_multimodal = false
+                w_msg.comment_multimodal_url = "无"
+                w_msg.have_repl = false
+                w_msg.reply_content = "无"
+                w_msg.is_reply_multimodal = false
+                w_msg.reply_multimodal_url = "无"
+                console.warn(JSON.stringify(w_msg))
+                return
+            }
             //评论用户主页
             w_msg.comment_user_homepage = document.getElementsByClassName("parent-comment")[parent_id].getElementsByClassName("avatar")[0].children[0].href;
 
